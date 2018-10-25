@@ -9,6 +9,7 @@
 void handle_sigint(int sig) { 
     printf("Caught signal %d\n", sig);
     printf("Exiting has begun.");
+    close(sockfd);
     exit(1);
 } 
 	
@@ -51,16 +52,18 @@ void BindListen(int sockfd){
 
 void* ClientGame(void *arg){
 	int sock = *(int*)arg;
+	//Check auth and kick user if not authenticated
 	int auth = GetAUTH(sock);
 	if(auth != 1){
 		fprintf(stderr, "User is not authenticated! exiting...\n");
-		send(sock, &auth, sizeof(int), 0);
-		exit(0);
+		send(sock, auth, sizeof(int), 0);
+		pthread_exit(NULL);
 	}
 	else{
-		send(sock, &auth, sizeof(int), 0);
+		send(sock, auth, sizeof(int), 0);
 	}
 	while(1);
+
 }
 
 int GetAUTH(int socket_id){
@@ -84,6 +87,7 @@ int GetAUTH(int socket_id){
 			}
 		}
 		if(strcmp(user, auth) == 0){
+			printf("yes\n");
 			return 1;
 		}
 	}

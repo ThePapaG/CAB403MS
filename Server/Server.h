@@ -42,36 +42,3 @@ void GenerateEP(void);
 void BindListen(int sockfd);
 void* ClientGame(void *arg);
 int GetAUTH(int socket_id);
-
-
-/* ---- Menu Graphics ---- */
-// const char  WELCOME_MESSAGE[] = "\n"
-//                               "=============================================\n"
-//                               "\n"
-//                               " Welcome to the Online Minesweeper the Game System\n"
-//                               "\n"
-//                               "=============================================\n"
-//                               "\n";
-
-const char* LOGIN_PROMPT = "You are required to logon with your username and password:\n";
-
-// const char USERNAME_PROMPT[] = "\nPlease enter your username --> ";
-// const char PASSWORD_PROMPT[] = "\nPlease enter your password --> ";
-
-// const char *AUTH_FILE = "Authentication.txt";
-
-// const char AUTH_FAILED[] = "\nYou entered either an incorrect username or password - disconnecting...\n";
-
-// const char MAIN_MENU[] = "\n"
-//                         "\n"
-//                         "===== Main Manu =====\n"
-//                         "\n"
-//                         "<1> Play Minesweeper\n"
-//                         "<2> Show Leaderboard\n"
-//                         "<3> Quit\n";
-
-// const char MENU_PROMPT[] = "\nSelection option (1 - 3) --> ";
-
-// const char NO_LEADERBOARD[] = "\n==============================================================================\n"
-//                               "\nThere is no information currently stored in the Leader Board. Try again later.\n"
-//                               "\n==============================================================================\n";

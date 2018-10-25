@@ -47,7 +47,7 @@ int main(int argc, char* argv[]){
 
 		//loop the play logic while playing
 		while(playing){
-			
+			GameSelection();
 		}
 	}
 }
@@ -157,6 +157,8 @@ void GameSelection(void){
 		printf("\nSelect a tile to place a flag on (eg:A1): ");
 		scanf(" %c", tile);
 		Place(tile);
+	}else if(*selection == 'Q' || *selection == 'q'){
+		playing = false;
 	}
 	printf("\n");
 	while((*selection = getchar()) != '\n' && *selection != EOF);
@@ -205,11 +207,11 @@ void Send(int socket_id, int *myArray) {
 	}
 }
 
-void Receive(int socket_identifier, int size) {
+int Receive(int socket_identifier, int size) {
     int number_of_bytes, i=0;
     uint16_t statistics;
 
-    free(input);
+    int *input;
 	input = malloc(sizeof(int)*ARRAY_SIZE);
 
 	for (i=0; i < size; i++) {
@@ -227,9 +229,9 @@ int Authenticate(int socket_id, char *username, char *password){
 	char Buffer[1000];
 	strcpy(Buffer, username);
 	strcat(Buffer,password);
-	send(sockfd, Buffer, 1000, 0);
+	send(sockfd, Buffer, 1000, 0);	//don't use Send function as this is a char
 
 	int response = 0;
-	recv(sockfd, &response, sizeof(int), 0);
+	response = Receive(sockfd, 1);
 	return response;
 }
