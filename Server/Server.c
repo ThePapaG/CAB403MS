@@ -63,15 +63,19 @@ void* ClientGame(void *arg){
 	else{
 		send(sock, &auth, sizeof(int), 0);
 	}
+	printf("%d\n", auth);
 	
 	GameState client_game;
 	while(1){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
+		bool playing = false;
 		int selection = Receive(sock, 1);
 		switch(selection) {
 			case 1:
 				client_game = initialiseGame();
+				Send(sock, (int *)1);
+				playing = true;
 			break;
 
 			case 2:
@@ -81,6 +85,11 @@ void* ClientGame(void *arg){
 			default:
 			break;
 		}
+
+		while(playing){
+			selection = Receive(sock, 1);
+
+		}	
 	}
 }
 
@@ -107,13 +116,13 @@ GameState initialiseGame(void){
 		for(int d = x-1; d <= x+1; d++){
 			for(int j = y-1; j <= y+1; j++){
 				if(d!=x && j!=y){
-					game.tile[d][]
+					game.tile[d][i].adjacent_mines++;
 				}
 			}
 		}
 	}
 
-
+	return game;
 }
 
 bool tile_contains_mine(Tile tile){
@@ -141,7 +150,6 @@ int GetAUTH(int socket_id){
 			}
 		}
 		if(strcmp(user, auth) == 0){
-			printf("yes\n");
 			return 1;
 		}
 	}
@@ -173,6 +181,7 @@ int Receive(int socket_identifier, int size) {
 		}
 		input[i] = ntohs(statistics);
 	}
+	return *input;
 }
 
 int main(int argc, char const *argv[]){

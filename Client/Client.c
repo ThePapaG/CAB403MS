@@ -81,6 +81,9 @@ void Menu(void){
 			initialiseGame();
 			playing = true;
 			Send(sockfd, selection);
+			while(Receive(sockfd, 1)!=1){
+				printf("Waiting for server response\n");
+			}
 			break;
 		case 2:
 			//show leaderboard
@@ -223,6 +226,7 @@ int Receive(int socket_identifier, int size) {
 		}
 		input[i] = ntohs(statistics);
 	}
+	return *input;
 }
 
 int Authenticate(int socket_id, char *username, char *password){
@@ -232,6 +236,7 @@ int Authenticate(int socket_id, char *username, char *password){
 	send(sockfd, Buffer, 1000, 0);	//don't use Send function as this is a char
 
 	int response = 0;
-	response = Receive(sockfd, 1);
+	response = recv(sockfd, &response, sizeof(int), 0);
+	printf("%d\n", response);
 	return response;
 }
