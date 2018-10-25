@@ -1,5 +1,6 @@
 #include <stdio.h> 
 #include <stdlib.h> 
+#include <stdbool.h>
 #include <errno.h> 
 #include <string.h> 
 #include <signal.h>
@@ -11,6 +12,7 @@
 #include <sys/socket.h> 
 #include <sys/wait.h>
 #include <pthread.h>
+#include <ctype.h>
 
 
 /* ---- Defines ---- */
@@ -39,6 +41,7 @@ int CreateSocket(void);
 void GenerateEP(void);
 void BindListen(int sockfd);
 void* ClientGame(void *arg);
+int GetAUTH(int socket_id);
 
 
 /* ---- Menu Graphics ---- */

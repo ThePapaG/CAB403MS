@@ -6,13 +6,6 @@
 
 #include "server.h"
 
-/* Variables */
-int sockfd, con_fd;  /* listen on sock_fd, new connection on con_fd */
-char *message;
-struct sockaddr_in my_addr;    /* host address information */
-struct sockaddr_in their_addr; /* connector's address information */
-socklen_t sin_size;
-
 void handle_sigint(int sig) { 
     printf("Caught signal %d\n", sig);
     printf("Exiting has begun.");
@@ -58,10 +51,46 @@ void BindListen(int sockfd){
 
 void* ClientGame(void *arg){
 	int sock = *(int*)arg;
+	int auth = GetAUTH(sock);
+	if(auth != 1){
+		fprintf(stderr, "User is not authenticated! exiting...\n");
+		send(sock, &auth, sizeof(int), 0);
+		exit(0);
+	}
+	else{
+		send(sock, &auth, sizeof(int), 0);
+	}
+	while(1);
 }
 
-int main(int argc, char const *argv[])
-{
+int GetAUTH(int socket_id){
+	char auth[100] = "";
+	recv(socket_id, &auth, 100, 0);
+
+	FILE *fp;
+	char buf[100];
+	fp = fopen("Authentication.txt", "r");
+	if (fp == NULL) {
+		puts("Unable to read Auth file");
+		exit(0);
+	}
+	while (fgets(buf,100, fp)!=NULL){
+		char user[100] = {0};
+		int d = 0;
+		for(int i = 0; i<strlen(buf); i++){
+			if(!(isspace(buf[i]))){
+				user[d] = buf[i];
+				d++;
+			}
+		}
+		if(strcmp(user, auth) == 0){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int main(int argc, char const *argv[]){
 	if(argc!=2){
 		fprintf(stderr,"usage: port_number\n");
 		exit(1);

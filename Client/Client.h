@@ -44,5 +44,6 @@ struct hostent *he;
 struct sockaddr_in host_addr;
 void Send(int socket_id, int *myArray);
 void Receive(int socket_identifier, int size);
-void Authentication(int socket_id, char *var);
+void initUser(void);
+int Authenticate(int socket_id, char *username, char *password);
 char *input;

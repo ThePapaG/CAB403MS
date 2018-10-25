@@ -39,18 +39,8 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
-	//User menu
-	printf("===============================================\n");
-	printf("Welcome to the online Minesweeper gaming system\n");
-	printf("===============================================\n\n");
-	printf("You are required to log on with your registered user name and password.\n\n");
-	printf("User name: ");
-	scanf("%s", username);
-	Authentication(sockfd, username);
-	printf("Password: ");
-	scanf("%s", password);
-	Authentication(sockfd, password);
-	//TODO: send this and check the server. For client testing, assume correct.
+	initUser();
+
 	while(1){
 		//show the main menu
 		Menu();
@@ -60,6 +50,22 @@ int main(int argc, char* argv[]){
 			
 		}
 	}
+}
+
+void initUser(void){
+	//User menu
+	printf("===============================================\n");
+	printf("Welcome to the online Minesweeper gaming system\n");
+	printf("===============================================\n\n");
+	printf("You are required to log on with your registered user name and password.\n\n");
+	printf("User name: ");
+	scanf("%s", username);
+	printf("Password: ");
+	scanf("%s", password);
+	if(Authenticate(sockfd, username, password) != 1){
+		fprintf(stderr, "User failed to authenticate! exiting...\n");
+		exit(0);
+	}	//else it went smoothly
 }
 
 void Menu(void){
@@ -217,11 +223,13 @@ void Receive(int socket_identifier, int size) {
 	}
 }
 
-void Authentication(int socket_id, char *var){
-	int i=0;
-	char buff;  
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		buff = htons(var[i]);
-		send(socket_id, &buff, strlen(var), 0);
-	}
+int Authenticate(int socket_id, char *username, char *password){
+	char Buffer[1000];
+	strcpy(Buffer, username);
+	strcat(Buffer,password);
+	send(sockfd, Buffer, 1000, 0);
+
+	int response = 0;
+	recv(sockfd, &response, sizeof(int), 0);
+	return response;
 }
