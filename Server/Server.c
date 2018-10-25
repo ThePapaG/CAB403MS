@@ -52,15 +52,16 @@ void BindListen(int sockfd){
 
 void* ClientGame(void *arg){
 	int sock = *(int*)arg;
+
 	//Check auth and kick user if not authenticated
 	int auth = GetAUTH(sock);
 	if(auth != 1){
 		fprintf(stderr, "User is not authenticated! exiting...\n");
-		send(sock, auth, sizeof(int), 0);
+		send(sock, &auth, sizeof(int), 0);
 		pthread_exit(NULL);
 	}
 	else{
-		send(sock, auth, sizeof(int), 0);
+		send(sock, &auth, sizeof(int), 0);
 	}
 	while(1);
 
@@ -109,6 +110,8 @@ int main(int argc, char const *argv[]){
 	GenrateEP();
 	BindListen(sockfd);
 
+	client_list = 0;
+
 	while(1) {  /* main accept() loop */
 
 		int client_sock;
@@ -119,6 +122,11 @@ int main(int argc, char const *argv[]){
 	        new_sock = malloc(sizeof *new_sock);
 	        *new_sock = con_fd;
 			pthread_create( &client_thread , NULL , ClientGame, (void*) new_sock);
+
+			CLIENTS[client_list].thread = client_thread;
+			CLIENTS[client_list].sock_id = new_sock;
+			CLIENTS[client_list].counter = client_list;
+			client_list++;
     	}
 
     	if(con_fd < 0){

@@ -28,7 +28,15 @@
 #define PASSWORD_LENGTH     10
 #define MAX_CLIENTS         10
 
+typedef struct{
+	pthread_t thread;
+	int* sock_id;
+	int counter;
+}	Client;
+
 int PORT;
+Client CLIENTS[MAX_CLIENTS];
+int client_list;
 
 /* Variables */
 int sockfd, con_fd;  /* listen on sock_fd, new connection on con_fd */
