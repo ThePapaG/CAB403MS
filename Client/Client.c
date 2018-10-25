@@ -65,11 +65,14 @@ void initUser(void){
 	if(Authenticate(sockfd, username, password) != 1){
 		fprintf(stderr, "User failed to authenticate! exiting...\n");
 		exit(0);
-	}	//else it went smoothly
+	}else{
+		printf("\n\nUser Authenticted!\n\n");
+	}
 }
 
 void Menu(void){
 	int selection[1] = {0};
+
 	//play menu
 	printf("Welcome to the Minesweeper gaming system.\n\n");
 	printf("Please enter a selection:\n<1> Play Minesweeper\n<2> Show Leaderboard\n<3> Quit\n\n");
@@ -81,6 +84,9 @@ void Menu(void){
 			initialiseGame();
 			playing = true;
 			Send(sockfd, selection);
+			while(Receive(sockfd, 1)!=1){
+				printf("Waiting for server response\n");
+			}
 			break;
 		case 2:
 			//show leaderboard
@@ -107,7 +113,6 @@ void initialiseGame(void){
 }
 
 void drawGame(void){
-
 	//setup the Y frame
 	printf("Remaining mines: %d\n\n", minesRemaining);
 	for(int i = 1; i <= NUM_TILES_X; i++){
@@ -223,6 +228,7 @@ int Receive(int socket_identifier, int size) {
 		}
 		input[i] = ntohs(statistics);
 	}
+	return *input;
 }
 
 int Authenticate(int socket_id, char *username, char *password){
@@ -232,6 +238,6 @@ int Authenticate(int socket_id, char *username, char *password){
 	send(sockfd, Buffer, 1000, 0);	//don't use Send function as this is a char
 
 	int response = 0;
-	response = Receive(sockfd, 1);
+	recv(sockfd, &response, sizeof(int), 0);
 	return response;
 }
