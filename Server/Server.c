@@ -63,22 +63,22 @@ void* ClientGame(void *arg){
 	else{
 		send(sock, &auth, sizeof(int), 0);
 	}
-	printf("%d\n", auth);
 	
 	GameState client_game;
 	while(1){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
 		bool playing = false;
-		int selection = Receive(sock, 1);
+		char selection[100];
+		recv(sock, &selection, sizeof(int), 0);
+		printf("%s\n", selection);
 		switch(selection) {
-			case 1:
+			case 'play':
 				client_game = initialiseGame();
-				Send(sock, (int *)1);
 				playing = true;
 			break;
 
-			case 2:
+			case 'leader':
 				//show leaderboard
 			break;
 
@@ -150,6 +150,7 @@ int GetAUTH(int socket_id){
 			}
 		}
 		if(strcmp(user, auth) == 0){
+			printf("User %s successfully authenticated\n", auth);
 			return 1;
 		}
 	}
