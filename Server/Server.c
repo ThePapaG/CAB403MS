@@ -69,16 +69,16 @@ void* ClientGame(void *arg){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
 		bool playing = false;
-		char selection[100];
+		int selection;
 		recv(sock, &selection, sizeof(int), 0);
-		printf("%s\n", selection);
+		printf("%d\n", selection);
 		switch(selection) {
-			case 'play':
+			case 1:
 				client_game = initialiseGame();
 				playing = true;
 			break;
 
-			case 'leader':
+			case 2:
 				//show leaderboard
 			break;
 
@@ -89,6 +89,51 @@ void* ClientGame(void *arg){
 		while(playing){
 			selection = Receive(sock, 1);
 
+			
+			int x = 0;
+			int y = 0;
+			int result;
+			switch(selection){
+				case 1:	//reveal
+					//get the tile from user [x][y]
+					result = reveal_tile(client_game.tile[x][y]);
+					switch(result){
+						case 1:
+							//revealed already, send value to tell user to try again. send a -1
+						break;
+
+						case 0:
+							//not revealed
+							client_game.tile[x][y].revealed = true;
+							//send the client the adjacent tiles value
+							//TODO calculate all 0's and send an array of tiles with 0. perhaps send the whole gamestate
+						break;
+
+						case -1:
+							//tile is a mine, game over
+						break;
+					}
+				break;
+				case 2:
+					result = reveal_tile(client_game.tile[x][y]);
+					switch(result){
+						case 1:
+							//revealed already, user can't place a flag on revealed tile
+						break;
+
+						case 0:
+							//not revealed but is not a mine
+						break;
+
+						case -1:
+							//tile is a mine, set the flag and send to the user the amount of mines left.
+						break;
+					}
+				break;
+				default:
+					//kill the game
+				break;
+			}
 		}	
 	}
 }
@@ -155,6 +200,14 @@ int GetAUTH(int socket_id){
 		}
 	}
 	return 0;
+}
+
+int reveal_tile(Tile tile){
+	if(tile_contains_mine(tile)){
+		return -1;
+	}
+
+	return tile.revealed ? 1 : 0;
 }
 
 void Send(int socket_id, int *myArray) {
