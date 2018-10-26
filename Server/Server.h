@@ -72,3 +72,4 @@ int Receive(int socket_identifier, int size);
 
 GameState initialiseGame(void);
 bool tile_contains_mine(Tile tile);
+int reveal_tile(Tile tile);
