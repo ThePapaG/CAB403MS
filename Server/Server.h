@@ -67,8 +67,8 @@ void GenerateEP(void);
 void BindListen(int sockfd);
 void* ClientGame(void *arg);
 int GetAUTH(int socket_id);
-void Send(int socket_id, int *myArray);
-int Receive(int socket_identifier, int size);
+void Send(int socket_id, char *output);
+char * Receive(int socket_identifier, int size);
 
 GameState initialiseGame(void);
 bool tile_contains_mine(Tile tile);

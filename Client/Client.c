@@ -17,6 +17,7 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
+	printf("Connecting to the server...\n");
 	//Connect to the server
 	if ((he=gethostbyname(argv[1])) == NULL) {
 		herror("gethostbyname");
@@ -37,6 +38,8 @@ int main(int argc, char* argv[]){
 		perror("connect");
 		exit(1);
 	}
+
+	printf("Server connected!\n");
 
 	initUser();
 
@@ -70,27 +73,25 @@ void initUser(void){
 }
 
 void Menu(void){
-	int selection[1] = {0};
+	int selection;
+	char userselect[1];
 
 	//play menu
 	printf("Welcome to the Minesweeper gaming system.\n\n");
 	printf("Please enter a selection:\n<1> Play Minesweeper\n<2> Show Leaderboard\n<3> Quit\n\n");
 	printf("Selection option (1-3): ");
-	scanf("%d", selection);
-	char userselect;
-	switch(*selection){
+	scanf("%d", &selection);
+	snprintf(userselect, 1, "%d", selection);
+	Send(sockfd, userselect);
+	switch(selection){
 		case 1:
 			initialiseGame();
-			playing = true;
-			userselect = 'p';
-			send(sockfd, &userselect, 100, 0);
+			playing = true; 
 			break;
 		case 2:
 			//show leaderboard
-			Send(sockfd, selection);
 			break;
 		default:
-			Send(sockfd, selection);
 			close(sockfd);
 			exit(1);
 	}
@@ -154,12 +155,10 @@ void GameSelection(void){
 	if(*selection == 'R' || *selection == 'r'){
 		printf("\nSelect a tile to reveal (eg:A1): ");
 		scanf(" %c", tile);
-		Reveal(tile);
 	}
 	else if(*selection == 'P' || *selection == 'r'){
 		printf("\nSelect a tile to place a flag on (eg:A1): ");
 		scanf(" %c", tile);
-		Place(tile);
 	}else if(*selection == 'Q' || *selection == 'q'){
 		playing = false;
 	}
@@ -167,75 +166,42 @@ void GameSelection(void){
 	while((*selection = getchar()) != '\n' && *selection != EOF);
 }
 
-void Reveal(char* tile){
-	int *coordinate = malloc(sizeof(int)*2);
-	int success[1] = {0};
-	for(int i = 0; i<NUM_TILES_Y; i++){
-		if(coord[i] == tile[0]){
-			coordinate[0] = i;
-			success[0] = 1;
-			break;
-		}
-	}
-	if(*success!=1){
-		coordinate[1] = atoi(&tile[1]);
-		Send(sockfd, coordinate);
-		Receive(sockfd, 1);
+void Send(int socket_id, char *output) {
+	int i=0;  
+	for (i = 0; i < strlen(output); i++) {
+		printf("%c\n", output[i]);
+		send(socket_id, &output[i], 1, 0);	//char is already byte representation
 	}
 }
 
-void Place(char* tile){
-	int *coordinate = malloc(sizeof(int)*2);
-	int success[1] = {0};
-	for(int i = 0; i<NUM_TILES_Y; i++){
-		if(coord[i] == tile[0]){
-			coordinate[0] = i;
-			success[0] = 1;
-			break;
-		}
-	}
-	if(*success!=1){
-		coordinate[1] = atoi(&tile[1]);
-		Send(sockfd, coordinate);
-		Receive(sockfd, 1);
-	}
-}
-
-void Send(int socket_id, int *myArray) {
-	int i=0;
-	uint16_t statistics;  
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		statistics = htons(myArray[i]);
-		send(socket_id, &statistics, sizeof(uint16_t), 0);
-	}
-}
-
-int Receive(int socket_identifier, int size) {
+char * Receive(int socket_identifier, int size) {
     int number_of_bytes, i=0;
-    uint16_t statistics;
+    char rec;
 
-    int *input;
-	input = malloc(sizeof(int)*ARRAY_SIZE);
+    char *buff[size];
 
 	for (i=0; i < size; i++) {
-		if ((number_of_bytes=recv(socket_identifier, &statistics, sizeof(uint16_t), 0))
+		if ((number_of_bytes=recv(socket_identifier, &rec, 1, 0))
 		         == -1) {
 			perror("recv");
-			exit(EXIT_FAILURE);			
+			exit(EXIT_FAILURE);		
 		    
 		}
-		input[i] = ntohs(statistics);
+		buff[i] = &rec;
 	}
-	return *input;
+	return *buff;
 }
 
 int Authenticate(int socket_id, char *username, char *password){
 	char Buffer[1000];
 	strcpy(Buffer, username);
 	strcat(Buffer,password);
-	send(sockfd, Buffer, 1000, 0);	//don't use Send function as this is a char
+	strcat(Buffer, '\0');
+	printf("%s\n", Buffer);
+	Send(sockfd, Buffer);
 
-	int response = 0;
-	recv(sockfd, &response, sizeof(int), 0);
-	return response;
+	char *response = Receive(sockfd, 1);
+	printf("%s\n", response);
+	int ret_val = atoi(response);
+	return ret_val;
 }

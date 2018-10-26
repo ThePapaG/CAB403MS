@@ -54,13 +54,10 @@ void* ClientGame(void *arg){
 
 	//Check auth and kick user if not authenticated
 	int auth = GetAUTH(sock);
+	//Send(sock, &auth);
 	if(auth != 1){
 		fprintf(stderr, "User is not authenticated! exiting...\n");
-		send(sock, &auth, sizeof(int), 0);
 		pthread_exit(NULL);
-	}
-	else{
-		send(sock, &auth, sizeof(int), 0);
 	}
 	
 	GameState client_game;
@@ -166,13 +163,15 @@ GameState initialiseGame(void){
 }
 
 bool tile_contains_mine(Tile tile){
+
 	return tile.is_mine == true;
 }
 
 int GetAUTH(int socket_id){
-	char auth[100] = "";
-	recv(socket_id, &auth, 100, 0);
+	char *auth = Receive(socket_id, 20);
+	printf("%s\n", auth);
 
+	//open auth file
 	FILE *fp;
 	char buf[100];
 	fp = fopen("Authentication.txt", "r");
@@ -180,21 +179,31 @@ int GetAUTH(int socket_id){
 		puts("Unable to read Auth file");
 		exit(0);
 	}
+
+	//loop and look for matching auth. NOTE: users are USERNAMEPASSWORD
+	int ret_val = 0;
 	while (fgets(buf,100, fp)!=NULL){
 		char user[100] = {0};
 		int d = 0;
+
+		//remove spaces
 		for(int i = 0; i<strlen(buf); i++){
 			if(!(isspace(buf[i]))){
 				user[d] = buf[i];
 				d++;
 			}
 		}
+
+		//check auth
 		if(strcmp(user, auth) == 0){
-			printf("User %s successfully authenticated\n", auth);
-			return 1;
+			printf("\nUser %s successfully authenticated\n", auth);
+			ret_val = 1;
+			break;
 		}
 	}
-	return 0;
+
+	//return
+	return ret_val;
 }
 
 int reveal_tile(Tile tile){
@@ -205,32 +214,32 @@ int reveal_tile(Tile tile){
 	return tile.revealed ? 1 : 0;
 }
 
-void Send(int socket_id, int *myArray) {
-	int i=0;
-	uint16_t statistics;  
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		statistics = htons(myArray[i]);
-		send(socket_id, &statistics, sizeof(uint16_t), 0);
+void Send(int socket_id, char *output) {
+	int i=0;  
+	for (i = 0; i < strlen(output); i++) {
+		send(socket_id, &output[i], sizeof(uint16_t), 0);	//char is already byte representation
 	}
 }
 
-int Receive(int socket_identifier, int size) {
+char * Receive(int socket_identifier, int size) {
     int number_of_bytes, i=0;
-    uint16_t statistics;
+    char rec;
 
-    int *input;
-	input = malloc(sizeof(int)*ARRAY_SIZE);
+    char *buff = malloc(size);
 
 	for (i=0; i < size; i++) {
-		if ((number_of_bytes=recv(socket_identifier, &statistics, sizeof(uint16_t), 0))
+		if ((number_of_bytes=recv(socket_identifier, &rec, 1, 0))
 		         == -1) {
 			perror("recv");
 			exit(EXIT_FAILURE);		
 		    
 		}
-		input[i] = ntohs(statistics);
+		if(rec == '\0'){
+			break;
+		}
+		buff[i] = rec;
 	}
-	return *input;
+	return buff;
 }
 
 int main(int argc, char const *argv[]){
