@@ -1,6 +1,5 @@
 //CAB403 Assignment 2018 SEM2 - Server
-//Written by Callum Scott n9695443
-//in conjunction with Grant Dare n9476512
+//Written by Grant Dare n9476512
 
 /* Include */
 
@@ -69,81 +68,45 @@ void* ClientGame(void *arg){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
 		bool playing = false;
-<<<<<<< HEAD
-		int selection = 0;
-=======
-		int selection;
->>>>>>> f0887f901eb44e91b0b6335370de0df16b1ef6d2
-		recv(sock, &selection, sizeof(int), 0);
-		printf("%d\n", selection);
-		switch(selection) {
-<<<<<<< HEAD
-			case selection==1:
-=======
-			case 1:
->>>>>>> f0887f901eb44e91b0b6335370de0df16b1ef6d2
-				client_game = initialiseGame();
-				playing = true;
-			break;
+		char selection[100];
+		recv(sock, &selection, 100, 0);
+		if(*selection == 'p'){
+			client_game = initialiseGame();
+			playing = true;
+		}
 
-<<<<<<< HEAD
-			case selection==2:
-=======
-			case 2:
->>>>>>> f0887f901eb44e91b0b6335370de0df16b1ef6d2
-				//show leaderboard
-			break;
+		else if(*selection == 'l'){
 
-			case selection==3:
-				exit(1);
-			break;
-
-			default:
-			break;
 		}
 
 		while(playing){
-			char Buff[162];
-			selection = Receive(sock, 1);
-			switch(selection) {
-				case selection==1:
-					CoOrd=(sock,CoOrd,strlen(CoOrd),0);
-				break;
-
-				case selection==2:
-					
-				break;
-
-<<<<<<< HEAD
-				case selection==3:
-					exit(1);
-				break;
-
-				default:
-=======
-			
 			int x = 0;
 			int y = 0;
 			int result;
-			switch(selection){
+			int game_choice = 0;
+			recv(sock, &game_choice, sizeof(int), 0);
+			printf("%d\n", game_choice);
+			switch(game_choice){
 				case 1:	//reveal
 					//get the tile from user [x][y]
 					result = reveal_tile(client_game.tile[x][y]);
 					switch(result){
 						case 1:
+							printf("woah\n");
+							while(1);
 							//revealed already, send value to tell user to try again. send a -1
-						break;
+							break;
 
 						case 0:
 							//not revealed
 							client_game.tile[x][y].revealed = true;
 							//send the client the adjacent tiles value
 							//TODO calculate all 0's and send an array of tiles with 0. perhaps send the whole gamestate
-						break;
+							break;
 
 						case -1:
 							//tile is a mine, game over
-						break;
+							break;
 					}
 				break;
 				case 2:
@@ -164,7 +127,6 @@ void* ClientGame(void *arg){
 				break;
 				default:
 					//kill the game
->>>>>>> f0887f901eb44e91b0b6335370de0df16b1ef6d2
 				break;
 			}
 		}	

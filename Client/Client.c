@@ -1,6 +1,5 @@
 //CAB403 Assignment 2018 Sem2 - Client main
 //Written by Grant Dare n9476512
-//in conjunction with Callum Scott
 
 #include "Client.h"
 
@@ -78,15 +77,13 @@ void Menu(void){
 	printf("Please enter a selection:\n<1> Play Minesweeper\n<2> Show Leaderboard\n<3> Quit\n\n");
 	printf("Selection option (1-3): ");
 	scanf("%d", selection);
-
+	char userselect;
 	switch(*selection){
 		case 1:
 			initialiseGame();
 			playing = true;
-			Send(sockfd, selection);
-			while(Receive(sockfd, 1)!=1){
-				printf("Waiting for server response\n");
-			}
+			userselect = 'p';
+			send(sockfd, &userselect, 100, 0);
 			break;
 		case 2:
 			//show leaderboard
@@ -153,6 +150,7 @@ void GameSelection(void){
 	printf("Choose an option:\n<R> Reveal a tile\n<P> Place flag\n<Q> Quit game\n\n");
 	printf("Option (R, P, Q): ");
 	scanf(" %c", selection);
+	send(sockfd, selection, sizeof(int), 0);
 	if(*selection == 'R' || *selection == 'r'){
 		printf("\nSelect a tile to reveal (eg:A1): ");
 		scanf(" %c", tile);
