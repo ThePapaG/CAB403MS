@@ -69,17 +69,21 @@ void* ClientGame(void *arg){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
 		bool playing = false;
-		char selection[100];
+		int selection = 0;
 		recv(sock, &selection, sizeof(int), 0);
 		printf("%s\n", selection);
 		switch(selection) {
-			case 'play':
+			case selection==1:
 				client_game = initialiseGame();
 				playing = true;
 			break;
 
-			case 'leader':
+			case selection==2:
 				//show leaderboard
+			break;
+
+			case selection==3:
+				exit(1);
 			break;
 
 			default:
@@ -87,8 +91,24 @@ void* ClientGame(void *arg){
 		}
 
 		while(playing){
+			char Buff[162];
 			selection = Receive(sock, 1);
+			switch(selection) {
+				case selection==1:
+					CoOrd=(sock,CoOrd,strlen(CoOrd),0);
+				break;
 
+				case selection==2:
+					
+				break;
+
+				case selection==3:
+					exit(1);
+				break;
+
+				default:
+				break;
+			}
 		}	
 	}
 }
@@ -177,7 +197,7 @@ int Receive(int socket_identifier, int size) {
 		if ((number_of_bytes=recv(socket_identifier, &statistics, sizeof(uint16_t), 0))
 		         == -1) {
 			perror("recv");
-			exit(EXIT_FAILURE);			
+			exit(EXIT_FAILURE);		
 		    
 		}
 		input[i] = ntohs(statistics);
