@@ -8,16 +8,16 @@ To make the assignment as a whole locate the root directory and run:
 
 _make_
 
-This will make _server.exe_ and _client.exe_ in the root directory. To run these components please execute the command line tools;
+This will make _server.exe_ and _client.exe_ in their root directories. To run these components please execute the command line tools;
 
 **Server**
 
-_./server PORT_
+_./Server/server PORT_
 
 Where _PORT_ is the port you wish to open the server on.
 
 **Client**
 
-_./client HOST_IP PORT_
+_./Client/client HOST_IP PORT_
 
 Where _HOST_IP_ is the ip of the server host (localhost if on the same machine), and _PORT_ is the port that the client is to connect to the server on.
