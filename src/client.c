@@ -6,6 +6,7 @@
 
 void siganlHandler(int sig){
 	printf("caught signal");
+	send(sockfd, DISCONNECT_SIGNAL, BUF_SIZE, 0);
 	close(sockfd);
 	exit(sig);
 }

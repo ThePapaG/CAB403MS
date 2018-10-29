@@ -47,21 +47,34 @@ const char PASSWORD_PROMPT[] = "\nPassword: ";
 const char AUTH_FAILED[] = "\nYou entered either an incorrect username or password - disconnecting...\n";
 
 const char MAIN_MENU[] = "\n"
-                        "\n"
                         "Welcome to the Minesweeper game system\n"
                         "\n"
-						"Please enter a selection:"
+						"Please enter a selection: \n"
                         "<1> Play MineSweeper\n"
                         "<2> Show Leaderboard\n"
                         "<3> Quit\n";
 
-const char MENU_PROMPT[] = "\nSelection option (1 - 3):";
+const char MENU_PROMPT[] = "\nSelection option (1 - 3): ";
+
+const char GAME_MENU[] =    "\n"
+                            "Choose an option:\n"
+                            "<R> Reveal tile\n"
+                            "<P> Place flag\n"
+                            "<Q> Quit game\n"
+                            "\n";
+
+const char GAME_PROMPT[] =  "\nOption (R,P,Q): ";
+
+const char REVEAL_PROMPT[] = "\nReveal tile (eg. A1): ";
 
 const char NO_LEADERBOARD[] = "\n==============================================================================\n"
                               "\nThere is no information currently stored in the Leader Board. Try again later.\n"
                               "\n==============================================================================\n";
 
+const char GAME_HEADER[] =  "\n\t1\t2\t3\t4\t5\t6\t7\t8\t9\n"
+                            "\t_\t_\t_\t_\t_\t_\t_\t_\t_\n";
 
+const char TILE_REVEALED[] = "\nThat tile has already been revealed!\n";
 
 typedef struct {
     int         sock;
@@ -84,6 +97,7 @@ typedef struct{
 
 int PORT;
 bool ok;
+const char *yCoord[] = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
 
 /* Variables for connection */
 int sockfd;  /* listen on sock_fd*/
@@ -111,8 +125,13 @@ void addClient(int sock_id);
 int getClient(void);
 int getAuth(Client *client);
 bool checkAuth(Client *client);
-int getSelection(Client *client);
+int getMenuSelection(Client *client);
 bool playMinesweeper(Client *client);
 void initGame(GameState *game);
+void drawGame(GameState *game, char *board);
+char getGameSelection(Client *client);
+void getTile(Client *client, int *tile);
+bool revealTile(Client *client, GameState *game);
+bool placeTile(Client *client, GameState *game);
 void Send(int sock_id, const char *out);
 int Rec(int sock_id, char *rec);
