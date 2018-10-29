@@ -76,6 +76,8 @@ const char GAME_HEADER[] =  "\n\t1\t2\t3\t4\t5\t6\t7\t8\t9\n"
 
 const char TILE_REVEALED[] = "\nThat tile has already been revealed!\n";
 
+const char NOT_MINE[] = "\nOof, that tile isn't a mine!\n";
+
 typedef struct {
     int         sock;
     bool        authenticated;

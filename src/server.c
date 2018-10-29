@@ -225,7 +225,6 @@ bool playMinesweeper(Client *client){
 	bool alive = true;
 	
 	//init the game
-	game.minesRemaining = NUM_MINES;
 	initGame(&game);
 	
 	//game still active
@@ -260,6 +259,7 @@ bool playMinesweeper(Client *client){
 
 			case 'P':
 			case 'p':
+				placeTile(client, &game);
 				break;
 
 			case 'Q':
@@ -269,11 +269,14 @@ bool playMinesweeper(Client *client){
 
 		if(!alive){
 			sprintf(game_message, "\n\nUhoh!\nYou have revealed a mine. That's game over for you buddy!\n");
+			Send(client->sock, game_message);
 		}
 	}
 }
 
 void initGame(GameState *game){
+	game->minesRemaining = NUM_MINES;
+
 	for(int y = 0; y<NUM_TILES_Y; y++){
 		for(int x = 0; x<NUM_TILES_X; x++){
 			game->tile[x][y].adjacent_mines = 0;
@@ -306,12 +309,16 @@ void initGame(GameState *game){
 
 void drawGame(GameState *game, char *board){
 	char val;
+	strcat(board, "Mines Remaining: ");
+	val = game->minesRemaining + '0';
+	strcat(board, &val);
+	strcat(board, "\n\n");
 	strcat(board, GAME_HEADER);
 	for(int y = 0; y<NUM_TILES_Y; y++){
 		strcat(board, yCoord[y]);
 		strcat(board, "  |\t");
 		for(int x = 0; x<NUM_TILES_X; x++){
-			if(game->tile[x][y].revealed){
+			if(game->tile[x][y].revealed && !game->tile[x][y].is_flag){
 				val = game->tile[x][y].adjacent_mines + '0';
 				strcat(board, &val);
 			}else if(game->tile[x][y].is_flag){
@@ -344,13 +351,14 @@ void getTile(Client *client, int *tile){
     printf("User selection received\n");
 
 	tile[1] = atoi(&selection_str[1]) - 1;
+	//Delete the last character (the number) because it makes it hard to compare
+	selection_str[strlen(selection_str)-1] = '\0';
 	for(int i = 0; i<NUM_TILES_Y; i++){
-		if(strcmp(yCoord[i], &selection_str[0])){
+		if(strcmp(yCoord[i], &selection_str[0])==0){
 			tile[0] = i;
 			break;
 		}
 	}
-	printf("%d\n", tile[0]);
 }
 
 bool revealTile(Client *client, GameState *game){
@@ -358,8 +366,8 @@ bool revealTile(Client *client, GameState *game){
 	int x, y;
 	getTile(client, userTile);
 
-	x = userTile[0];
-	y = userTile[1];
+	x = userTile[1];
+	y = userTile[0];
 	if(game->tile[x][y].revealed){
 		printf("Tile, %d%d, is already revealed.", x, y);
 		Send(client->sock, TILE_REVEALED);
@@ -379,8 +387,8 @@ bool placeTile(Client *client, GameState *game){
 	int x, y;
 	getTile(client, userTile);
 
-	x = userTile[0];
-	y = userTile[1];
+	x = userTile[1];
+	y = userTile[0];
 	if((game->tile[x][y].revealed)){
 		printf("Tile, %d%d, is already revealed.", x, y);
 		Send(client->sock, TILE_REVEALED);
@@ -389,6 +397,9 @@ bool placeTile(Client *client, GameState *game){
 		game->minesRemaining--;
 		game->tile[x][y].is_flag = true;
 		game->tile[x][y].revealed = true;
+	}else{
+		printf("User tried to place flag on tile that is not a mine.\n");
+		Send(client->sock, NOT_MINE);
 	}
 
 	return true;
