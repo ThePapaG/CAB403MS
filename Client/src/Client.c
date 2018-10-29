@@ -1,5 +1,6 @@
 //CAB403 Assignment 2018 Sem2 - Client main
 //Written by Grant Dare n9476512
+//in conjunction with Callum Scott
 
 #include "Client.h"
 
@@ -17,7 +18,6 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
-	printf("Connecting to the server...\n");
 	//Connect to the server
 	if ((he=gethostbyname(argv[1])) == NULL) {
 		herror("gethostbyname");
@@ -39,8 +39,6 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
-	printf("Server connected!\n");
-
 	initUser();
 
 	while(1){
@@ -49,7 +47,7 @@ int main(int argc, char* argv[]){
 
 		//loop the play logic while playing
 		while(playing){
-			GameSelection();
+			
 		}
 	}
 }
@@ -67,26 +65,28 @@ void initUser(void){
 	if(Authenticate(sockfd, username, password) != 1){
 		fprintf(stderr, "User failed to authenticate! exiting...\n");
 		exit(0);
-	}else{
-		printf("\n\nUser Authenticted!\n\n");
-	}
+	}	//else it went smoothly
 }
 
 void Menu(void){
-	int selection;
-	char userselect[1];
-
+	int selection = 0;
+	char userselect[10];
+	int response = 0;
 	//play menu
+	printf("%d\n", selection);
 	printf("Welcome to the Minesweeper gaming system.\n\n");
 	printf("Please enter a selection:\n<1> Play Minesweeper\n<2> Show Leaderboard\n<3> Quit\n\n");
 	printf("Selection option (1-3): ");
 	scanf("%d", &selection);
-	snprintf(userselect, 1, "%d", selection);
-	Send(sockfd, userselect);
+	printf("%d\n", selection);
 	switch(selection){
 		case 1:
+			strcpy(userselect, "p");
 			initialiseGame();
-			playing = true; 
+			playing = true;
+			printf("%s\n", userselect);
+			send(sockfd, userselect, 10, 0);
+			
 			break;
 		case 2:
 			//show leaderboard
@@ -111,6 +111,7 @@ void initialiseGame(void){
 }
 
 void drawGame(void){
+
 	//setup the Y frame
 	printf("Remaining mines: %d\n\n", minesRemaining);
 	for(int i = 1; i <= NUM_TILES_X; i++){
@@ -151,57 +152,57 @@ void GameSelection(void){
 	printf("Choose an option:\n<R> Reveal a tile\n<P> Place flag\n<Q> Quit game\n\n");
 	printf("Option (R, P, Q): ");
 	scanf(" %c", selection);
-	send(sockfd, selection, sizeof(int), 0);
 	if(*selection == 'R' || *selection == 'r'){
 		printf("\nSelect a tile to reveal (eg:A1): ");
 		scanf(" %c", tile);
+		Reveal(tile);
 	}
 	else if(*selection == 'P' || *selection == 'r'){
 		printf("\nSelect a tile to place a flag on (eg:A1): ");
 		scanf(" %c", tile);
-	}else if(*selection == 'Q' || *selection == 'q'){
-		playing = false;
+		Place(tile);
 	}
 	printf("\n");
 	while((*selection = getchar()) != '\n' && *selection != EOF);
 }
 
-void Send(int socket_id, char *output) {
-	int i=0;  
-	for (i = 0; i < strlen(output); i++) {
-		printf("%c\n", output[i]);
-		send(socket_id, &output[i], 1, 0);	//char is already byte representation
+void Reveal(char* tile){
+	int *coordinate = malloc(sizeof(int)*2);
+	int success[1] = {0};
+	for(int i = 0; i<NUM_TILES_Y; i++){
+		if(coord[i] == tile[0]){
+			coordinate[0] = i;
+			success[0] = 1;
+			break;
+		}
+	}
+	if(*success!=1){
+		coordinate[1] = atoi(&tile[1]);
 	}
 }
 
-char * Receive(int socket_identifier, int size) {
-    int number_of_bytes, i=0;
-    char rec;
-
-    char *buff[size];
-
-	for (i=0; i < size; i++) {
-		if ((number_of_bytes=recv(socket_identifier, &rec, 1, 0))
-		         == -1) {
-			perror("recv");
-			exit(EXIT_FAILURE);		
-		    
+void Place(char* tile){
+	int *coordinate = malloc(sizeof(int)*2);
+	int success[1] = {0};
+	for(int i = 0; i<NUM_TILES_Y; i++){
+		if(coord[i] == tile[0]){
+			coordinate[0] = i;
+			success[0] = 1;
+			break;
 		}
-		buff[i] = &rec;
 	}
-	return *buff;
+	if(*success!=1){
+		coordinate[1] = atoi(&tile[1]);
+	}
 }
 
 int Authenticate(int socket_id, char *username, char *password){
 	char Buffer[1000];
 	strcpy(Buffer, username);
 	strcat(Buffer,password);
-	strcat(Buffer, '\0');
-	printf("%s\n", Buffer);
-	Send(sockfd, Buffer);
+	send(sockfd, Buffer, 1000, 0);
 
-	char *response = Receive(sockfd, 1);
-	printf("%s\n", response);
-	int ret_val = atoi(response);
-	return ret_val;
+	int response = 0;
+	recv(sockfd, &response, sizeof(int), 0);
+	return response;
 }

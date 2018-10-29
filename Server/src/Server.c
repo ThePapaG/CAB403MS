@@ -54,10 +54,14 @@ void* ClientGame(void *arg){
 
 	//Check auth and kick user if not authenticated
 	int auth = GetAUTH(sock);
-	//Send(sock, &auth);
 	if(auth != 1){
 		fprintf(stderr, "User is not authenticated! exiting...\n");
-		pthread_exit(NULL);
+		send(sock, &auth, sizeof(int), 0);
+		exit(0);
+	}
+	else{
+		printf("User has been authenticated!\n");
+		send(sock, &auth, sizeof(int), 0);
 	}
 	
 	GameState client_game;
@@ -65,15 +69,20 @@ void* ClientGame(void *arg){
 		//user is connected and starting a game
 		//wait for user main menu option where 1-3 is play, leaderboard and quit
 		bool playing = false;
-		char selection[100];
+		char *selection = malloc(100);
 		recv(sock, &selection, 100, 0);
-		if(*selection == 'p'){
-			client_game = initialiseGame();
-			playing = true;
-		}
+		printf("%s\n", selection);
+		bool cont = false;
+		while(!cont){
+			if(strcmp(selection, "p")){
+				printf("client selected to play a game");
+				client_game = initialiseGame();
+				playing = true;
+			}
 
-		else if(*selection == 'l'){
+			else if(strcmp(selection, "l")==0){
 
+			}
 		}
 
 		while(playing){
@@ -168,10 +177,9 @@ bool tile_contains_mine(Tile tile){
 }
 
 int GetAUTH(int socket_id){
-	char *auth = Receive(socket_id, 20);
-	printf("%s\n", auth);
+	char auth[100] = "";
+	recv(socket_id, &auth, 100, 0);
 
-	//open auth file
 	FILE *fp;
 	char buf[100];
 	fp = fopen("Authentication.txt", "r");
@@ -179,31 +187,22 @@ int GetAUTH(int socket_id){
 		puts("Unable to read Auth file");
 		exit(0);
 	}
-
-	//loop and look for matching auth. NOTE: users are USERNAMEPASSWORD
-	int ret_val = 0;
 	while (fgets(buf,100, fp)!=NULL){
 		char user[100] = {0};
 		int d = 0;
-
-		//remove spaces
 		for(int i = 0; i<strlen(buf); i++){
 			if(!(isspace(buf[i]))){
 				user[d] = buf[i];
 				d++;
 			}
 		}
-
-		//check auth
 		if(strcmp(user, auth) == 0){
-			printf("\nUser %s successfully authenticated\n", auth);
-			ret_val = 1;
-			break;
+			fclose(fp);
+			return 1;
 		}
 	}
-
-	//return
-	return ret_val;
+	fclose(fp);
+	return 0;
 }
 
 int reveal_tile(Tile tile){
@@ -212,34 +211,6 @@ int reveal_tile(Tile tile){
 	}
 
 	return tile.revealed ? 1 : 0;
-}
-
-void Send(int socket_id, char *output) {
-	int i=0;  
-	for (i = 0; i < strlen(output); i++) {
-		send(socket_id, &output[i], sizeof(uint16_t), 0);	//char is already byte representation
-	}
-}
-
-char * Receive(int socket_identifier, int size) {
-    int number_of_bytes, i=0;
-    char rec;
-
-    char *buff = malloc(size);
-
-	for (i=0; i < size; i++) {
-		if ((number_of_bytes=recv(socket_identifier, &rec, 1, 0))
-		         == -1) {
-			perror("recv");
-			exit(EXIT_FAILURE);		
-		    
-		}
-		if(rec == '\0'){
-			break;
-		}
-		buff[i] = rec;
-	}
-	return buff;
 }
 
 int main(int argc, char const *argv[]){
@@ -262,8 +233,6 @@ int main(int argc, char const *argv[]){
 	client_list = 0;
 
 	while(1) {  /* main accept() loop */
-
-		int client_sock;
 		int *new_sock;
 		sin_size = sizeof(struct sockaddr_in);
 	    while((con_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size))){
