@@ -65,6 +65,10 @@ void* ClientGame(void *arg){
 
 	client->authenticated = false;
 	client->sock = 0;
+	client->games_won = 0;
+	client->games_played = 0;
+	client->firstEntry = NULL;
+	client->entries = 0;
 
 	// if server dies this dies
 	while(ok){
@@ -112,11 +116,13 @@ void* ClientGame(void *arg){
 			switch(selection){
 				case PLAY_MINESWEEPER:
 					printf("User selected to play!\n");
+					client->games_played++;
 					playMinesweeper(client);
 					break;
 
 				case SHOW_LEADERBOARD:
 					printf("User selected to show leaderboard\n");
+					//showLeaderboard(client);
 					break;
 
 				case QUIT:
@@ -223,6 +229,8 @@ bool playMinesweeper(Client *client){
 	char playboard[BUF_SIZE];
 	char game_message[BUF_SIZE];
 	bool alive = true;
+	bool win = false;
+	double time_to_win;
 	
 	//init the game
 	initGame(&game);
@@ -237,7 +245,7 @@ bool playMinesweeper(Client *client){
 		}
 
 		printf("Drawing game for the user\n");
-		drawGame(&game, playboard);
+		drawGame(&game, playboard, alive);
 		printf("Sending the playboard to the user\n");
 		Send(client->sock, playboard);
 
@@ -259,7 +267,7 @@ bool playMinesweeper(Client *client){
 
 			case 'P':
 			case 'p':
-				placeTile(client, &game);
+				win = placeTile(client, &game);
 				break;
 
 			case 'Q':
@@ -267,15 +275,28 @@ bool playMinesweeper(Client *client){
 				break;
 		}
 
-		if(!alive){
-			sprintf(game_message, "\n\nUhoh!\nYou have revealed a mine. That's game over for you buddy!\n");
+		if(win){
+			time_to_win = difftime(time(NULL), game.start);
+			client->games_won++;
+			//addEntry(client, time_to_win);
+			sprintf(game_message, "\n\nCongratulations, %s! You have located all the mines, and it only took you %f seconds!\n", client->user, time_to_win);
 			Send(client->sock, game_message);
+			break;
 		}
 	}
+
+	if(!alive){
+			memset(playboard, 0, sizeof(playboard));
+			sprintf(game_message, "\n\nUhoh!\nYou have revealed a mine. That's game over for you buddy!\n");
+			Send(client->sock, game_message);
+			drawGame(&game, playboard, alive);
+			Send(client->sock, playboard);
+		}
 }
 
 void initGame(GameState *game){
 	game->minesRemaining = NUM_MINES;
+	game->start = time(NULL);
 
 	for(int y = 0; y<NUM_TILES_Y; y++){
 		for(int x = 0; x<NUM_TILES_X; x++){
@@ -297,8 +318,8 @@ void initGame(GameState *game){
 		game->tile[x][y].is_mine = true;
 		game->tile[x][y].adjacent_mines = -1;
 		//increment values around mine
-		for(int w = x-1; w<x+1; w++){
-			for(int h = y-1; h<y+1; h++){
+		for(int w = x-1; w<=x+1; w++){
+			for(int h = y-1; h<=y+1; h++){
 				if(!(game->tile[w][h].is_mine)){
 					game->tile[w][h].adjacent_mines++;
 				}
@@ -307,7 +328,7 @@ void initGame(GameState *game){
 	}
 }
 
-void drawGame(GameState *game, char *board){
+void drawGame(GameState *game, char *board, bool alive){
 	char val;
 	strcat(board, "Mines Remaining: ");
 	val = game->minesRemaining + '0';
@@ -323,6 +344,8 @@ void drawGame(GameState *game, char *board){
 				strcat(board, &val);
 			}else if(game->tile[x][y].is_flag){
 				strcat(board, "+");
+			}else if(!alive && game->tile[x][y].is_mine){
+				strcat(board, "*");
 			}
 			strcat(board, "\t");
 		}
@@ -345,7 +368,6 @@ char getGameSelection(Client *client){
 void getTile(Client *client, int *tile){
 	char selection_str[BUF_SIZE];
 
-	Send(client->sock, REVEAL_PROMPT);
     printf("Waiting for user option\n");
     Rec(client->sock, selection_str);
     printf("User selection received\n");
@@ -364,19 +386,21 @@ void getTile(Client *client, int *tile){
 bool revealTile(Client *client, GameState *game){
 	int userTile[2];
 	int x, y;
+	Send(client->sock, REVEAL_PROMPT);
 	getTile(client, userTile);
 
 	x = userTile[1];
 	y = userTile[0];
 	if(game->tile[x][y].revealed){
-		printf("Tile, %d%d, is already revealed.", x, y);
+		printf("Tile, %d%d, is already revealed.\n", x, y);
 		Send(client->sock, TILE_REVEALED);
 		return true;
 	}else if(game->tile[x][y].is_mine){
 		return false;
 	}else{
-		printf("Tile, %d%d, is now revealed.",x,y);
+		printf("Tile, %d%d, is now revealed.\n",x,y);
 		game->tile[x][y].revealed = true;
+		isZero(game, x, y);
 	}
 
 	return true;
@@ -385,6 +409,7 @@ bool revealTile(Client *client, GameState *game){
 bool placeTile(Client *client, GameState *game){
 	int userTile[2];
 	int x, y;
+	Send(client->sock, PLACE_PROMPT);
 	getTile(client, userTile);
 
 	x = userTile[1];
@@ -392,7 +417,6 @@ bool placeTile(Client *client, GameState *game){
 	if((game->tile[x][y].revealed)){
 		printf("Tile, %d%d, is already revealed.", x, y);
 		Send(client->sock, TILE_REVEALED);
-		return true;
 	}else if(game->tile[x][y].is_mine){
 		game->minesRemaining--;
 		game->tile[x][y].is_flag = true;
@@ -402,9 +426,175 @@ bool placeTile(Client *client, GameState *game){
 		Send(client->sock, NOT_MINE);
 	}
 
-	return true;
+	if(game->minesRemaining == 0){
+		return true;
+	}
+
+	return false;
 }
 
+bool isZero(GameState *game, int x, int y){
+	if(game->tile[x][y].adjacent_mines == 0){
+		game->tile[x][y].revealed = true;
+		for(int w = x-1; w<=x+1; w++){
+			for(int h = y-1; h<=y+1; h++){
+				if((w < 0) || (w > NUM_TILES_X-1) || (h < 0) || (h > NUM_TILES_Y-1)){}
+				else if(!(game->tile[w][h].revealed)){
+					isZero(game, w, h);
+				}
+			}
+		}
+	}else{
+		game->tile[x][y].revealed = true;
+	}
+}
+
+/*
+Leaderboard functions
+*/
+/*
+void showLeaderboard(Client *client){
+	if(leaderboard->entries == 0){
+		printf("Leaderboard is empty\n");
+		Send(client->sock, EMPTY_LEADERBOARD);
+	}else{
+		char board[BUF_SIZE];
+		printf("Drawing the leaderboard\n");
+		drawLeaderboard(board);
+		printf("Sending the leaderboard\n");
+		Send(client->sock, board);
+	}
+}
+
+Leaderboard* initLeaderboard(void){
+	//allocate memory for the struct
+	Leaderboard *leaderboard = malloc(sizeof(Leaderboard));
+	if(leaderboard == NULL){
+		printf("leaderboard malloc failed\n");
+		exit(EXIT_FAILURE);
+	}else{	//success
+		leaderboard->firstEntry = NULL;
+		leaderboard->lastEntry = NULL;
+		leaderboard->entries = 0;
+	}
+
+	return leaderboard;
+}
+
+void drawLeaderboard(char *str){
+	sortClientEntries();
+	LeaderboardEntry *nextVar = leaderboard->firstEntry;
+	strcat(str, "\n==============================================================================\n");
+	char temp[BUF_SIZE];
+	for(int i = 0; i<leaderboard->entries; i++){
+		Client *client = getClientInfo(nextVar);
+		sprintf(temp, "%s\t\t%f seconds\t%d games won, %d games played\n", nextVar->current->user, nextVar->current->time_elapsed, client->games_won, client->games_played);
+		strcat(str, temp);
+	}
+}
+
+void sortClientEntries(void){
+	leaderboard->entries = 0;
+	
+	LeaderboardEntry *temp = malloc(sizeof(LeaderboardEntry));
+	//setup an unsorted list
+	for(int i = 0; i<MAX_CLIENTS; i++){
+		if(clients[i].lastEntry == NULL){ 	//only one entry
+			temp->current = clients[i].firstEntry;
+			temp->next = NULL;
+			leaderboard->firstEntry = temp;
+			leaderboard->entries++;
+		}
+		else{
+			ClientEntry *point = clients[i].firstEntry;
+			for(int d = 0; d<clients[i].entries; d++){
+				temp->current = point;
+				leaderboard->lastEntry->next = temp;
+				point = point->nextClientEntry;
+				leaderboard->lastEntry = temp;
+				leaderboard->entries++;
+			}
+		}
+	}
+
+	//now that the leaderboard pointerlist is setup we can sort it
+	bubbleboi();
+}
+
+void bubbleboi(void){
+	int i = 0, j = 0;
+	int n = leaderboard->entries-1;
+	LeaderboardEntry *temp = leaderboard->firstEntry;
+	//bubble sort cause easy
+	while (i < n) {
+		j = 0;
+		while (j < i) {
+		if (temp->current->time_elapsed < temp->next->current->time_elapsed) {	//descending <, ascending >
+			swapEntries(temp, temp->next);
+		}else if(temp->current->time_elapsed == temp->next->current->time_elapsed){
+			equalCheck(temp, temp->next);
+		}
+		temp = temp->next;
+		j++;
+		}
+    i++;
+  }
+}
+
+void swapEntries(LeaderboardEntry *entry1, LeaderboardEntry *entry2){
+	LeaderboardEntry temp = *entry2;
+	*entry2 = *entry1;
+	*entry1 = temp;
+}
+
+void equalCheck(LeaderboardEntry *entry1, LeaderboardEntry *entry2){
+	//check games won
+	char *user1 = entry1->current->user;
+	char *user2 = entry2->current->user;
+	Client *client1;
+	Client *client2;
+
+	//check for clients
+	client1 = getClientInfo(entry1);
+	client2 = getClientInfo(entry2);
+
+	//check games won
+	if(client1->games_won < client2->games_won){
+		swapEntries(entry1,entry2);
+	}else if(client1->games_won == client2->games_won){
+		for(int i = 0; i<AUTH_LENGTH; i++){
+			if(user1[i] < user2[i]){
+				swapEntries(entry1, entry2);
+				break;
+			}
+		}
+	}
+}
+
+Client *getClientInfo(LeaderboardEntry *entry){
+	Client *client;
+	char *user = entry->current->user;
+	for(int i = 0; i<MAX_CLIENTS; i++){
+		if(strcmp(user, clients[i].user)){
+			*client = clients[i];
+		}
+	}
+}
+
+void addEntry(Client *client, double time){
+	ClientEntry *entry_won = malloc(sizeof(ClientEntry));
+	if(client->firstEntry == NULL){	//first entry being added to this user
+		client->firstEntry = entry_won;
+	}else{
+		client->lastEntry->nextClientEntry = entry_won; // point to the next user entry so we can iterate
+		client->lastEntry = entry_won;
+	}
+	entry_won->time_elapsed = time;
+	strcpy(entry_won->user, client->user);
+	client->entries++;
+	leaderboard->entries++;
+}
+*/
 /*
 Main
 */
@@ -449,6 +639,9 @@ int main(int argc, char const *argv[]){
             exit(EXIT_FAILURE);
         }
     }
+
+	//leaderboard = initLeaderboard();
+    pthread_mutex_init(&leaderboard_mut, NULL);
 
 	//Assume evewrything went ok up to now, so ok...
 	ok = true;

@@ -40,6 +40,8 @@ int main(int argc, char* argv[]){
 		exit(1);
 	}
 
+    printf("Server connection established\n");
+
 	//split the users sending and receiving on threads
 	if (pthread_create(&writeth, NULL, Send, (void *) &sockfd) != 0) {
         perror("pthread_create");
