@@ -28,7 +28,7 @@
 #define MAX_CLIENTS         10
 #define NUM_TILES_X 		9
 #define NUM_TILES_Y 		9
-#define NUM_MINES 			10
+#define NUM_MINES 			1
 #define RANDOM_NUMBER_SEED	42
 
 /* ---- Menu Graphics ---- */
@@ -67,7 +67,9 @@ const char GAME_PROMPT[] =  "\nOption (R,P,Q): ";
 
 const char REVEAL_PROMPT[] = "\nReveal tile (eg. A1): ";
 
-const char NO_LEADERBOARD[] = "\n==============================================================================\n"
+const char PLACE_PROMPT[] = "\nPlace a flag (eg. A1): ";
+
+const char EMPTY_LEADERBOARD[] = "\n==============================================================================\n"
                               "\nThere is no information currently stored in the Leader Board. Try again later.\n"
                               "\n==============================================================================\n";
 
@@ -78,28 +80,52 @@ const char TILE_REVEALED[] = "\nThat tile has already been revealed!\n";
 
 const char NOT_MINE[] = "\nOof, that tile isn't a mine!\n";
 
-typedef struct {
-    int         sock;
-    bool        authenticated;
-    char        user[AUTH_LENGTH];
-    char        pass[AUTH_LENGTH];
+typedef struct ClientEntry{
+ 	double time_elapsed;
+    char user[AUTH_LENGTH];
+ 	struct ClientEntry *nextClientEntry;
+} ClientEntry;
+
+typedef struct Client{
+    int sock;
+    bool authenticated;
+    char user[AUTH_LENGTH];
+    char pass[AUTH_LENGTH];
+ 	int games_played;
+ 	int games_won;
+    struct ClientEntry *firstEntry;
+    struct ClientEntry *lastEntry;
+ 	int entries;
 } Client;
 
-typedef struct{
+typedef struct Tile{
 	int adjacent_mines;
 	bool revealed;
 	bool is_flag;
 	bool is_mine;
 } Tile;
 
-typedef struct{
-	Tile tile[NUM_TILES_X][NUM_TILES_Y];
+typedef struct GameState{
+	struct Tile tile[NUM_TILES_X][NUM_TILES_Y];
 	int minesRemaining;
+    time_t start;
 } GameState;
+
+ typedef struct LeaderboardEntry{
+    struct ClientEntry *current;
+ 	struct LeaderboardEntry *next;
+ } LeaderboardEntry;
+
+ typedef struct Leaderboard{
+ 	struct LeaderboardEntry *firstEntry;
+    struct LeaderboardEntry *lastEntry;
+    int entries;
+ } Leaderboard;
 
 int PORT;
 bool ok;
 const char *yCoord[] = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
+
 
 /* Variables for connection */
 int sockfd;  /* listen on sock_fd*/
@@ -118,22 +144,42 @@ static pthread_mutex_t  queue_mutex;
 static int              next_client = 0;
 static pthread_mutex_t  next_client_mutex;
 
+/* For leaderboard locking*/
+static pthread_mutex_t  leaderboard_mut;
+Leaderboard *leaderboard; 
+
 /* Function def */
 int CreateSocket(void);
 void GenerateEP(void);
 void BindListen(int sockfd);
+
 void* ClientGame(void *arg);
 void addClient(int sock_id);
 int getClient(void);
 int getAuth(Client *client);
 bool checkAuth(Client *client);
 int getMenuSelection(Client *client);
+
 bool playMinesweeper(Client *client);
 void initGame(GameState *game);
-void drawGame(GameState *game, char *board);
+void drawGame(GameState *game, char *board, bool alive);
 char getGameSelection(Client *client);
 void getTile(Client *client, int *tile);
 bool revealTile(Client *client, GameState *game);
 bool placeTile(Client *client, GameState *game);
+bool isZero(GameState *game, int x, int y);
+
+void showLeaderboard(Client *client);
+Leaderboard* initLeaderboard(void);
+void drawLeaderboard(char *str);
+void sortClientEntries(void);
+void addLeaderEntry(ClientEntry *point);
+void getClientEntry(char *str, Client *client);
+void addEntry(Client *client, double time);
+void swapEntries(LeaderboardEntry *entry1, LeaderboardEntry *entry2);
+void bubbleboi(void);
+void equalCheck(LeaderboardEntry *entry1, LeaderboardEntry *entry2);
+Client *getClientInfo(LeaderboardEntry *entry);
+
 void Send(int sock_id, const char *out);
 int Rec(int sock_id, char *rec);
