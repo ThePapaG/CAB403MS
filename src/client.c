@@ -70,6 +70,7 @@ int main(int argc, char* argv[]){
 }
 
 static void *Send(void *data){
+    printf("Outgoing thread established\n");
     int     *sock_fd;
     char    send_buf[BUF_SIZE];
     int     input_len;
@@ -89,6 +90,7 @@ static void *Send(void *data){
 }
 
 static void *Rec(void *data){
+    printf("Incoming thread established\n");
     int     *sock_fd;
     char    recv_buf[BUF_SIZE];
 

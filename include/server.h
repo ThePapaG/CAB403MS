@@ -28,7 +28,7 @@
 #define MAX_CLIENTS         10
 #define NUM_TILES_X 		9
 #define NUM_TILES_Y 		9
-#define NUM_MINES 			10
+#define NUM_MINES 			1
 #define RANDOM_NUMBER_SEED	42
 
 /* ---- Menu Graphics ---- */
@@ -173,6 +173,7 @@ void showLeaderboard(Client *client);
 Leaderboard* initLeaderboard(void);
 void drawLeaderboard(char *str);
 void sortClientEntries(void);
+void addLeaderEntry(ClientEntry *point);
 void getClientEntry(char *str, Client *client);
 void addEntry(Client *client, double time);
 void swapEntries(LeaderboardEntry *entry1, LeaderboardEntry *entry2);

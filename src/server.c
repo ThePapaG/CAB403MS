@@ -72,7 +72,13 @@ void* ClientGame(void *arg){
 
 	// if server dies this dies
 	while(ok){
-		sem_wait(&sem_clients);
+		if(sem_wait(&sem_clients) == -1){
+			printf("sem errno %d\n", errno);
+		}else{
+			printf("sem success\n");
+		}
+
+		printf("Client found!\n");
 
 		if(!ok){	//server died, uhoh
 			break;
@@ -122,7 +128,7 @@ void* ClientGame(void *arg){
 
 				case SHOW_LEADERBOARD:
 					printf("User selected to show leaderboard\n");
-					//showLeaderboard(client);
+					showLeaderboard(client);
 					break;
 
 				case QUIT:
@@ -139,22 +145,25 @@ void* ClientGame(void *arg){
 }
 
 void addClient(int sock_id){
+	printf("Locking client queue\n");
 	pthread_mutex_lock(&queue_mutex);
 	printf("next_queue_pos: %d\n", queue_pos);
 	sock_fds[queue_pos] = sock_id;
 	queue_pos++;
 	queue_pos = queue_pos % MAX_CLIENTS;
 	pthread_mutex_unlock(&queue_mutex);
+	printf("Unlocking client queue\n");
 }
 
 int getClient(void){
+	printf("Locking next client\n");
 	pthread_mutex_lock(&next_client_mutex);
     printf("cnext_client: %d\n", next_client);
     int client = sock_fds[next_client];
     next_client++;
     next_client = next_client % MAX_CLIENTS;
     pthread_mutex_unlock(&next_client_mutex);
-
+	printf("Unlocking next client\n");
     return client;
 }
 
@@ -278,7 +287,9 @@ bool playMinesweeper(Client *client){
 		if(win){
 			time_to_win = difftime(time(NULL), game.start);
 			client->games_won++;
-			//addEntry(client, time_to_win);
+			printf("Client won the game, adding entry\n");
+			addEntry(client, time_to_win);
+			printf("Client entry added\n");
 			sprintf(game_message, "\n\nCongratulations, %s! You have located all the mines, and it only took you %f seconds!\n", client->user, time_to_win);
 			Send(client->sock, game_message);
 			break;
@@ -452,8 +463,9 @@ bool isZero(GameState *game, int x, int y){
 /*
 Leaderboard functions
 */
-/*
 void showLeaderboard(Client *client){
+	printf("Sorting the client entries\n");
+	sortClientEntries();
 	if(leaderboard->entries == 0){
 		printf("Leaderboard is empty\n");
 		Send(client->sock, EMPTY_LEADERBOARD);
@@ -482,43 +494,56 @@ Leaderboard* initLeaderboard(void){
 }
 
 void drawLeaderboard(char *str){
-	sortClientEntries();
-	LeaderboardEntry *nextVar = leaderboard->firstEntry;
+	LeaderboardEntry *var = leaderboard->firstEntry;
 	strcat(str, "\n==============================================================================\n");
 	char temp[BUF_SIZE];
+	printf("Iterating the leaderboard entries %d\n", leaderboard->entries);
 	for(int i = 0; i<leaderboard->entries; i++){
-		Client *client = getClientInfo(nextVar);
-		sprintf(temp, "%s\t\t%f seconds\t%d games won, %d games played\n", nextVar->current->user, nextVar->current->time_elapsed, client->games_won, client->games_played);
+		printf("Looking for client info\n");
+		Client *client = getClientInfo(var);
+		printf("Client info found %s\n", client->user);
+		printf("%f\n", var->current->time_elapsed);
+		sprintf(temp, "%s\t\t%f seconds\t%d games won, %d games played\n", var->current->user, var->current->time_elapsed, client->games_won, client->games_played);
 		strcat(str, temp);
+		var = var->next;
 	}
 }
 
 void sortClientEntries(void){
 	leaderboard->entries = 0;
-	
-	LeaderboardEntry *temp = malloc(sizeof(LeaderboardEntry));
 	//setup an unsorted list
 	for(int i = 0; i<MAX_CLIENTS; i++){
-		if(clients[i].lastEntry == NULL){ 	//only one entry
-			temp->current = clients[i].firstEntry;
-			temp->next = NULL;
-			leaderboard->firstEntry = temp;
-			leaderboard->entries++;
-		}
-		else{
-			ClientEntry *point = clients[i].firstEntry;
-			for(int d = 0; d<clients[i].entries; d++){
-				temp->current = point;
-				leaderboard->lastEntry->next = temp;
-				point = point->nextClientEntry;
-				leaderboard->lastEntry = temp;
-				leaderboard->entries++;
-			}
+		ClientEntry *point = clients[i].firstEntry;
+		for(int d = 0; d<clients[i].entries; d++){
+			addLeaderEntry(point);
+			point = point->nextClientEntry;
 		}
 	}
-
 	//now that the leaderboard pointerlist is setup we can sort it
 	bubbleboi();
+}
+
+void addLeaderEntry(ClientEntry *point){
+	printf("Setting up LeaderboardEntry\n");
+	LeaderboardEntry *temp = malloc(sizeof(LeaderboardEntry));
+	temp->current = point;
+	if(leaderboard->firstEntry == NULL){
+		leaderboard->firstEntry = temp;
+		leaderboard->lastEntry = NULL;
+		leaderboard->firstEntry->next = NULL;
+		printf("First leaderboard entry added %f\n", leaderboard->firstEntry->current->time_elapsed);
+	}
+	else if(leaderboard->lastEntry == NULL){
+		leaderboard->firstEntry->next = temp;
+		leaderboard->lastEntry = temp;
+		printf("Leaderboard entry added %f\n", leaderboard->lastEntry->current->time_elapsed);
+	}else{
+		leaderboard->lastEntry->next = temp;
+		leaderboard->lastEntry = temp;
+		printf("Leaderboard entry added %f\n", leaderboard->lastEntry->current->time_elapsed);
+	}
+	free(temp);
+	leaderboard->entries++;
 }
 
 void bubbleboi(void){
@@ -529,9 +554,11 @@ void bubbleboi(void){
 	while (i < n) {
 		j = 0;
 		while (j < i) {
+			printf("comparing time elapsed %f and %f\n",temp->current->time_elapsed, temp->next->current->time_elapsed);
 		if (temp->current->time_elapsed < temp->next->current->time_elapsed) {	//descending <, ascending >
 			swapEntries(temp, temp->next);
 		}else if(temp->current->time_elapsed == temp->next->current->time_elapsed){
+			printf("Time was equal, comparing equality conditions\n");
 			equalCheck(temp, temp->next);
 		}
 		temp = temp->next;
@@ -551,12 +578,8 @@ void equalCheck(LeaderboardEntry *entry1, LeaderboardEntry *entry2){
 	//check games won
 	char *user1 = entry1->current->user;
 	char *user2 = entry2->current->user;
-	Client *client1;
-	Client *client2;
-
-	//check for clients
-	client1 = getClientInfo(entry1);
-	client2 = getClientInfo(entry2);
+	Client *client1 = getClientInfo(entry1);
+	Client *client2 = getClientInfo(entry2);
 
 	//check games won
 	if(client1->games_won < client2->games_won){
@@ -572,29 +595,38 @@ void equalCheck(LeaderboardEntry *entry1, LeaderboardEntry *entry2){
 }
 
 Client *getClientInfo(LeaderboardEntry *entry){
-	Client *client;
 	char *user = entry->current->user;
+	Client *client;
 	for(int i = 0; i<MAX_CLIENTS; i++){
-		if(strcmp(user, clients[i].user)){
-			*client = clients[i];
+		printf("Searching for %s in %s\n", user, clients[i].user);
+		if(strcmp(user, clients[i].user) == 0){
+			printf("User %s found\n", clients[i].user);
+			client = &clients[i];
+			break;
 		}
 	}
+	return client;
 }
 
 void addEntry(Client *client, double time){
 	ClientEntry *entry_won = malloc(sizeof(ClientEntry));
 	if(client->firstEntry == NULL){	//first entry being added to this user
+		printf("First user entry, adding to start\n");
 		client->firstEntry = entry_won;
 	}else{
-		client->lastEntry->nextClientEntry = entry_won; // point to the next user entry so we can iterate
+		printf("Adding new entry\n");
+		if(client->lastEntry == NULL){	//Only 1 entry present
+			client->firstEntry->nextClientEntry = entry_won;
+		}else{
+			client->lastEntry->nextClientEntry = entry_won; // point to the next user entry so we can iterate
+		}
 		client->lastEntry = entry_won;
 	}
 	entry_won->time_elapsed = time;
 	strcpy(entry_won->user, client->user);
 	client->entries++;
-	leaderboard->entries++;
 }
-*/
+
 /*
 Main
 */
@@ -640,8 +672,8 @@ int main(int argc, char const *argv[]){
         }
     }
 
-	//leaderboard = initLeaderboard();
-    pthread_mutex_init(&leaderboard_mut, NULL);
+	leaderboard = initLeaderboard();
+    //pthread_mutex_init(&leaderboard_mut, NULL);
 
 	//Assume evewrything went ok up to now, so ok...
 	ok = true;
@@ -661,7 +693,12 @@ int main(int argc, char const *argv[]){
 		
 		addClient(new_sock_fd);
 
-		sem_post(&sem_clients);
+		printf("Posting new client\n");
+		if(sem_post(&sem_clients) == -1){
+			printf("post errno %d\n", errno);
+		}else{
+			printf("Sem post success\n");
+		}
 	}
 
 	return 0;
