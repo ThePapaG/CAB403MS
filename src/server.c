@@ -6,8 +6,49 @@
 #include "server.h"
 
 void killServer(int sig) { 
+
+	ok = false;
+
     printf("Caught signal %d\n", sig);
     printf("Exiting has begun.");
+
+	//kill clients
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+        if(sem_post(&sem_client) == -1){
+			fprintf(stderr, "error with sem_post shutdown %d", errno);
+		}
+		else{
+			printf("sem_post mshutdown success\n");
+		}
+    }
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (clients[i].authenticated) {
+            killClient(&clients[i]);
+        }
+    }
+
+	//kill threads
+	printf("\n\n");
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (pthread_join(threads[i], NULL)) {
+            fprintf(stderr, "Error joining thread\n");
+            exit(EXIT_FAILURE);
+        }
+        printf("Thread %d has joined.\n", i);
+    }
+
+	//kill leaderboard
+	LeaderboardEntry *curr = leaderboard->firstEntry;
+	LeaderboardEntry *prev;
+
+	while (curr != NULL) {
+		prev = curr;
+		curr = prev->next;
+		free(prev->current);
+		free(prev);
+	}
+	free(leaderboard);
+
     close(sockfd);
     exit(1);
 } 
@@ -56,6 +97,7 @@ void BindListen(int sockfd){
 Client functions
 */
 void* ClientGame(void *arg){
+	
 	//client vars
 	int selection;
 	bool playing;
@@ -70,9 +112,12 @@ void* ClientGame(void *arg){
 	client->firstEntry = NULL;
 	client->entries = 0;
 
-	// if server dies this dies
-	while(ok){
-		rc = pthread_cond_wait(&new_client, &next_client_mutex);
+
+	// infinite loop, if the server dies then it will run shutdown and kill all threads anyway
+	while(1){
+		while(sem_wait(&sem_client) != 0){
+			printf("Waiting on the sem\n");
+		}
 
 		printf("Client found!\n");
 
@@ -133,7 +178,12 @@ void* ClientGame(void *arg){
 			}
 		}
 		killClient(client);
-    	close(client->sock);
+    	if(sem_post(&client_handler) == -1){
+			fprintf(stderr, "error with sem_post thread kill %d", errno);
+		}
+		else{
+			printf("sem_post thread kill success\n");
+		}
 	}
 	return NULL;
 }
@@ -654,21 +704,39 @@ int main(int argc, char const *argv[]){
 	pthread_mutex_init(&queue_mutex, NULL); 
     pthread_mutex_init(&next_client_mutex, NULL); 
 
+	if (sem_init(&client_handler, 0, MAX_CLIENTS) == -1) {
+        perror("sem_init");
+        exit(EXIT_FAILURE);
+    }
+
+    if (sem_init(&sem_client, 0, 0) == -1) {
+        perror("sem_init");
+        exit(EXIT_FAILURE);
+    }
+
 	//setup threadpool for client handling
 	for (int i = 0; i < MAX_CLIENTS; i++) {
         if (pthread_create(&threads[i], NULL, ClientGame, (void *) &clients[i]) != 0) {
             perror("pthread_create");
             exit(EXIT_FAILURE);
-        }
+        }else{
+			printf("Thread-pool %d created\n", i);
+		}
     }
 
 	leaderboard = initLeaderboard();
-    //pthread_mutex_init(&leaderboard_mut, NULL);
+    pthread_mutex_init(&leaderboard_mut, NULL);
 
 	//Assume evewrything went ok up to now, so ok...
 	ok = true;
 
 	while(ok){
+		if(sem_wait(&client_handler) == -1){
+			fprintf(stderr, "error with sem_wait main %d", errno);
+		}
+		else{
+			printf("sem_wait main success\n");
+		}
 		int new_sock_fd;
 
 		//get a client connection
@@ -678,11 +746,17 @@ int main(int argc, char const *argv[]){
             perror("accept");
             continue;
         }
-		printf("Client connected. Pending authorisation\n");
-		
+		printf("Connection from %s - waiting for authentication.\n", inet_ntoa(their_addr.sin_addr));
+
 		addClient(new_sock_fd);
 
-		rc = pthread_cond_signal(&new_client);
+		if(sem_post(&sem_client) == -1){
+			fprintf(stderr, "error with sem_post main %d", errno);
+		}
+		else{
+			printf("sem_post main success\n");
+		}
+
 	}
 
 	close(sockfd);

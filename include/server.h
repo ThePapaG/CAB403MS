@@ -141,8 +141,8 @@ static int              queue_pos = 0;
 static pthread_mutex_t  queue_mutex;
 static int              next_client = 0;
 static pthread_mutex_t  next_client_mutex;
-static pthread_cond_t  new_client   = PTHREAD_COND_INITIALIZER;
-static int rc; 
+static sem_t            client_handler;    
+static sem_t            sem_client;
 
 /* For leaderboard locking*/
 static pthread_mutex_t  leaderboard_mut;
