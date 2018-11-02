@@ -137,18 +137,19 @@ socklen_t sin_size;
 static Client clients[MAX_CLIENTS]; 
 static pthread_t threads[MAX_CLIENTS];       
 static int sock_fds[MAX_CLIENTS];
-static sem_t client_handler;
-static sem_t sem_clients;
 static int              queue_pos = 0; 
 static pthread_mutex_t  queue_mutex;
 static int              next_client = 0;
 static pthread_mutex_t  next_client_mutex;
+static pthread_cond_t  new_client   = PTHREAD_COND_INITIALIZER;
+static int rc; 
 
 /* For leaderboard locking*/
 static pthread_mutex_t  leaderboard_mut;
 Leaderboard *leaderboard; 
 
 /* Function def */
+void killServer(int sig);
 int CreateSocket(void);
 void GenerateEP(void);
 void BindListen(int sockfd);
@@ -156,6 +157,7 @@ void BindListen(int sockfd);
 void* ClientGame(void *arg);
 void addClient(int sock_id);
 int getClient(void);
+void killClient(Client *client);
 int getAuth(Client *client);
 bool checkAuth(Client *client);
 int getMenuSelection(Client *client);

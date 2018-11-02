@@ -5,7 +5,7 @@
 
 #include "server.h"
 
-void handle_sigint(int sig) { 
+void killServer(int sig) { 
     printf("Caught signal %d\n", sig);
     printf("Exiting has begun.");
     close(sockfd);
@@ -72,11 +72,7 @@ void* ClientGame(void *arg){
 
 	// if server dies this dies
 	while(ok){
-		if(sem_wait(&sem_clients) == -1){
-			printf("sem errno %d\n", errno);
-		}else{
-			printf("sem success\n");
-		}
+		rc = pthread_cond_wait(&new_client, &next_client_mutex);
 
 		printf("Client found!\n");
 
@@ -136,10 +132,8 @@ void* ClientGame(void *arg){
 					break;
 			}
 		}
-		send(client->sock, DISCONNECT_SIGNAL, BUF_SIZE,0);
+		killClient(client);
     	close(client->sock);
-    	memset(client, 0, sizeof(Client));
-		sem_post(&client_handler);
 	}
 	return NULL;
 }
@@ -165,6 +159,13 @@ int getClient(void){
     pthread_mutex_unlock(&next_client_mutex);
 	printf("Unlocking next client\n");
     return client;
+}
+
+void killClient(Client *client){
+	send(client->sock, DISCONNECT_SIGNAL, BUF_SIZE, 0);
+    close(client->sock);
+    memset(client, 0, sizeof(Client));
+	printf("Client is dead!\n");
 }
 
 int getAuth(Client *client){
@@ -643,22 +644,11 @@ int main(int argc, char const *argv[]){
 	srand(RANDOM_NUMBER_SEED);
 
 	//setup server socket
-	signal(SIGINT, handle_sigint); 
+	signal(SIGINT, killServer); 
 	sockfd=CreateSocket();
 	bzero(&my_addr, sizeof(my_addr));
 	GenrateEP();
 	BindListen(sockfd);
-
-	//setup critical section solution
-	if (sem_init(&client_handler, 0, MAX_CLIENTS) == -1) {
-        perror("sem_init");
-        exit(EXIT_FAILURE);
-    }
-
-	if (sem_init(&sem_clients, 0, 0) == -1) {
-        perror("sem_init");
-        exit(EXIT_FAILURE);
-    }
 
 	//setup mutex var for threadpool client handling
 	pthread_mutex_init(&queue_mutex, NULL); 
@@ -679,7 +669,6 @@ int main(int argc, char const *argv[]){
 	ok = true;
 
 	while(ok){
-		sem_wait(&client_handler);
 		int new_sock_fd;
 
 		//get a client connection
@@ -693,15 +682,11 @@ int main(int argc, char const *argv[]){
 		
 		addClient(new_sock_fd);
 
-		printf("Posting new client\n");
-		if(sem_post(&sem_clients) == -1){
-			printf("post errno %d\n", errno);
-		}else{
-			printf("Sem post success\n");
-		}
+		rc = pthread_cond_signal(&new_client);
 	}
 
-	return 0;
+	close(sockfd);
+    exit(EXIT_SUCCESS);
 }
 
 void Send(int sock_id, const char *out){
