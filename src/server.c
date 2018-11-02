@@ -179,12 +179,6 @@ void* ClientGame(void *arg){
 			}
 		}
 		killClient(client);
-    	if(sem_post(&client_handler) == -1){
-			fprintf(stderr, "error with sem_post thread kill %d", errno);
-		}
-		else{
-			printf("sem_post thread kill success\n");
-		}
 	}
 	return NULL;
 }
@@ -216,6 +210,13 @@ void killClient(Client *client){
 	send(client->sock, DISCONNECT_SIGNAL, BUF_SIZE, 0);
     close(client->sock);
     memset(client, 0, sizeof(Client));
+	queue_pos--;
+	if(sem_post(&client_handler) == -1){
+		fprintf(stderr, "error with sem_post thread kill %d", errno);
+	}
+	else{
+		printf("sem_post thread kill success\n");
+	}
 	printf("Client is dead!\n");
 }
 
@@ -315,7 +316,8 @@ bool playMinesweeper(Client *client){
 		printf("Sending user game prompt\n");
 		Send(client->sock, GAME_PROMPT);
 		selection = getGameSelection(client);
-		if(selection == -1){
+		if(strcmp(&selection, DISCONNECT_SIGNAL)){
+			killClient(client);
 			break;
 		}
 
@@ -349,7 +351,7 @@ bool playMinesweeper(Client *client){
 			break;
 		}
 	}
-	memset(game, 0, sizeof(GameState));
+	memset(&game, 0, sizeof(GameState));
 	if(!alive){
 			memset(playboard, 0, sizeof(playboard));
 			sprintf(game_message, "\n\nUhoh!\nYou have revealed a mine. That's game over for you buddy!\n");

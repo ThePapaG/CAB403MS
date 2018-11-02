@@ -7,9 +7,6 @@
 void killClient(int sig){
 	printf("caught signal");
 	send(sockfd, DISCONNECT_SIGNAL, BUF_SIZE, 0);
-    pthread_join(writeth, NULL);
-    pthread_join(readth,NULL);
-	close(sockfd);
 	exit(sig);
 }
 
