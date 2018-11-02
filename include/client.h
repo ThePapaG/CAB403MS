@@ -16,7 +16,7 @@
 #define DISCONNECT_SIGNAL   "QUIT"
 
 static bool cont = true;
-
+void killClient(int sig);
 static void *Send(void *data);
 static void *Rec(void *data);
 int getSelection(char *msg, char *input_str);

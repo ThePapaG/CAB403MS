@@ -4,15 +4,17 @@
 
 #include "client.h"
 
-void siganlHandler(int sig){
+void killClient(int sig){
 	printf("caught signal");
 	send(sockfd, DISCONNECT_SIGNAL, BUF_SIZE, 0);
+    pthread_join(writeth, NULL);
+    pthread_join(readth,NULL);
 	close(sockfd);
 	exit(sig);
 }
 
 int main(int argc, char* argv[]){
-	signal(SIGINT, siganlHandler);	
+	signal(SIGINT, killClient);	
 	//process the input arguments
 	if (argc != 3) {
 		fprintf(stderr,"usage: client_hostname port_number\n");
@@ -104,7 +106,7 @@ static void *Rec(void *data){
 
         if (strcmp(recv_buf, DISCONNECT_SIGNAL) == 0) {
             printf("\nReceived disconnect from server.\n");
-            send(*sock_fd, DISCONNECT_SIGNAL, BUF_SIZE, 0);
+            killClient(EXIT_SUCCESS);
             break;
         }
 

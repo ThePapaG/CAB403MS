@@ -28,7 +28,7 @@
 #define MAX_CLIENTS         10
 #define NUM_TILES_X 		9
 #define NUM_TILES_Y 		9
-#define NUM_MINES 			1
+#define NUM_MINES 			10
 #define RANDOM_NUMBER_SEED	42
 
 /* ---- Menu Graphics ---- */

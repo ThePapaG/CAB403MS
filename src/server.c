@@ -174,6 +174,7 @@ void* ClientGame(void *arg){
 
 				case QUIT:
 					printf("User selected to quit\n");
+					killClient(client);
 					break;
 			}
 		}
@@ -282,7 +283,6 @@ int getMenuSelection(Client *client){
 /*
 Game functions
 */
-
 bool playMinesweeper(Client *client){
 	GameState game;
 	char selection;
@@ -332,6 +332,7 @@ bool playMinesweeper(Client *client){
 
 			case 'Q':
 			case 'q':
+			//This will break the loop and return the user to the main menu
 				break;
 		}
 
@@ -339,21 +340,23 @@ bool playMinesweeper(Client *client){
 			time_to_win = difftime(time(NULL), game.start);
 			client->games_won++;
 			printf("Client won the game, adding entry\n");
+			pthread_mutex_lock(&leaderboard_mut);
 			addEntry(client, time_to_win);
+			pthread_mutex_unlock(&leaderboard_mut);
 			printf("Client entry added\n");
 			sprintf(game_message, "\n\nCongratulations, %s! You have located all the mines, and it only took you %f seconds!\n", client->user, time_to_win);
 			Send(client->sock, game_message);
 			break;
 		}
 	}
-
+	memset(game, 0, sizeof(GameState));
 	if(!alive){
 			memset(playboard, 0, sizeof(playboard));
 			sprintf(game_message, "\n\nUhoh!\nYou have revealed a mine. That's game over for you buddy!\n");
 			Send(client->sock, game_message);
 			drawGame(&game, playboard, alive);
 			Send(client->sock, playboard);
-		}
+	}
 }
 
 void initGame(GameState *game){
